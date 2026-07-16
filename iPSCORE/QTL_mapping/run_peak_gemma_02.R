@@ -1,0 +1,518 @@
+## ============================================================
+## 02_run_peak_gemma_caQTL.R
+## Called by SLURM array — tests all SNPs for one ATAC-seq peak
+## Usage: Rscript 02_run_peak_gemma_caQTL.R <peak_id>
+##
+## Identical model to eQTL version but:
+##   - Input files are in caqtl_gene_inputs/
+##   - Output files are in caqtl_gene_outputs/
+##   - peak_id format: ppc_atac_peak_1 etc.
+## ============================================================
+
+setwd("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/")
+
+# ============================================================================
+# Core REML Likelihood Functions
+# ============================================================================
+
+#' First derivative of REML likelihood with respect to lambda
+#'
+#' @param lambda Variance component ratio
+#' @param eigenVals Eigenvalues of kinship matrix
+#' @param Y Transformed phenotype vector
+#' @param W Transformed covariate matrix
+#' @return First derivative value
+likelihood_derivative1_lambda <- function(lambda, eigenVals, Y, W) {
+  n <- nrow(Y)
+  c <- ncol(W)
+  
+  # Compute D = lambda * eigenVals + 1
+  D <- lambda * eigenVals + 1.0
+  
+  # Compute P = I - W(W'D^-1W)^-1W'D^-1
+  W_scaled <- W / sqrt(D)
+  WtW_inv <- solve(crossprod(W_scaled))
+  
+  # P_diag represents diagonal of P
+  P_diag <- 1/D - rowSums((W/D) * (W %*% WtW_inv %*% t(W/D)))
+  
+  # Compute derivative
+  trace_term <- sum(eigenVals * P_diag)
+  quad_term <- sum((eigenVals * P_diag) * (Y^2))
+  
+  deriv <- -0.5 * trace_term + 0.5 * quad_term / sum(P_diag * Y^2) * (n - c)
+  
+  return(deriv)
+}
+
+#' Second derivative of REML likelihood with respect to lambda
+#'
+#' @param lambda Variance component ratio
+#' @param eigenVals Eigenvalues of kinship matrix
+#' @param Y Transformed phenotype vector
+#' @param W Transformed covariate matrix
+#' @return Second derivative value
+likelihood_derivative2_lambda <- function(lambda, eigenVals, Y, W) {
+  n <- nrow(Y)
+  c <- ncol(W)
+  
+  D <- lambda * eigenVals + 1.0
+  
+  # More complex computation for second derivative
+  # This is a simplified version - full implementation would need careful derivation
+  W_scaled <- W / sqrt(D)
+  WtW_inv <- solve(crossprod(W_scaled))
+  P_diag <- 1/D - rowSums((W/D) * (W %*% WtW_inv %*% t(W/D)))
+  
+  # Approximate second derivative
+  h <- 1e-5
+  deriv_plus <- likelihood_derivative1_lambda(lambda + h, eigenVals, Y, W)
+  deriv_minus <- likelihood_derivative1_lambda(lambda - h, eigenVals, Y, W)
+  
+  return((deriv_plus - deriv_minus) / (2 * h))
+}
+
+#' REML likelihood function
+#'
+#' @param lambda Variance component ratio
+#' @param eigenVals Eigenvalues of kinship matrix
+#' @param Y Transformed phenotype vector
+#' @param W Transformed covariate matrix
+#' @return REML log-likelihood value
+likelihood_lambda <- function(lambda, eigenVals, Y, W) {
+  n <- nrow(Y)
+  c <- ncol(W)
+  
+  D <- lambda * eigenVals + 1.0
+  
+  # Log determinant term
+  logdet_D <- sum(log(D))
+  
+  # Compute W'D^-1W
+  W_scaled <- W / sqrt(D)
+  WtDW <- crossprod(W_scaled)
+  logdet_WtDW <- determinant(WtDW, logarithm = TRUE)$modulus[1]
+  
+  # Compute Y'PY where P = D^-1 - D^-1W(W'D^-1W)^-1W'D^-1
+  Y_D <- Y / D
+  WtDW_inv <- solve(WtDW)
+  Y_P_Y <- sum(Y * Y_D) - t(crossprod(W, Y_D)) %*% WtDW_inv %*% crossprod(W, Y_D)
+  
+  # REML log-likelihood
+  loglik <- -0.5 * (logdet_D + logdet_WtDW + (n - c) * log(Y_P_Y[1]))
+  
+  return(as.numeric(loglik))
+}
+
+# ============================================================================
+# Lambda Optimization
+# ============================================================================
+
+#' Calculate optimal lambda using grid search and optimization
+#'
+#' @param eigenVals Eigenvalues of kinship matrix
+#' @param Y Transformed phenotype vector
+#' @param W Transformed covariate matrix (including SNP for restricted model)
+#' @param grid Logical, use grid search (slower but more robust)
+#' @return Optimal lambda value
+calc_lambda_restricted <- function(eigenVals, Y, W, grid = FALSE) {
+  
+  if (grid) {
+    # Grid search approach (more robust)
+    step <- 1.0
+    lambda_pow_low <- -5.0
+    lambda_pow_high <- 5.0
+    
+    lambda_grid <- seq(lambda_pow_low, lambda_pow_high - step, by = step)
+    roots <- c(10^lambda_pow_low, 10^lambda_pow_high)
+    
+    likelihood_prev <- likelihood_derivative1_lambda(10^lambda_pow_low, eigenVals, Y, W)
+    
+    for (i in seq_along(lambda_grid)) {
+      lambda0 <- 10^lambda_grid[i]
+      lambda1 <- 10^(lambda_grid[i] + step)
+      
+      if (i > 1) {
+        likelihood_lambda0 <- likelihood_lambda1
+      } else {
+        likelihood_lambda0 <- likelihood_prev
+      }
+      
+      likelihood_lambda1 <- likelihood_derivative1_lambda(lambda1, eigenVals, Y, W)
+      
+      # Check for sign change
+      if (sign(likelihood_lambda0) * sign(likelihood_lambda1) < 0) {
+        # Use Brent's method to find root
+        lambda_min <- tryCatch({
+          uniroot(
+            f = function(l) likelihood_derivative1_lambda(l, eigenVals, Y, W),
+            lower = lambda0,
+            upper = lambda1,
+            tol = 0.1
+          )$root
+        }, error = function(e) {
+          (lambda0 + lambda1) / 2
+        })
+        
+        # Refine with Newton's method
+        lambda_min <- tryCatch({
+          for (iter in 1:10) {
+            f_val <- likelihood_derivative1_lambda(lambda_min, eigenVals, Y, W)
+            f_prime <- likelihood_derivative2_lambda(lambda_min, eigenVals, Y, W)
+            
+            if (abs(f_prime) < 1e-10) break
+            
+            lambda_new <- lambda_min - f_val / f_prime
+            
+            if (abs(lambda_new - lambda_min) < 1e-5) break
+            
+            lambda_min <- lambda_new
+          }
+          lambda_min
+        }, error = function(e) {
+          lambda_min
+        })
+        
+        roots <- c(roots, lambda_min)
+      }
+    }
+    
+    # Evaluate likelihood at all roots
+    likelihoods <- sapply(roots, function(lam) {
+      likelihood_lambda(lam, eigenVals, Y, W)
+    })
+    
+    return(roots[which.max(likelihoods)])
+    
+  } else {
+    # Fast optimization approach
+    opt_result <- tryCatch({
+      optimize(
+        f = function(l) -likelihood_lambda(l, eigenVals, Y, W),
+        lower = 1e-5,
+        upper = 1e5,
+        tol = 1e-4
+      )
+    }, error = function(e) {
+      list(minimum = 1.0)
+    })
+    
+    return(opt_result$minimum)
+  }
+}
+
+# ============================================================================
+# Parameter Estimation
+# ============================================================================
+
+#' Calculate beta, standard error, and variance components (REML)
+#'
+#' @param eigenVals Eigenvalues of kinship matrix
+#' @param W Transformed covariate matrix
+#' @param X Transformed SNP genotypes (single SNP)
+#' @param lambda Variance component ratio
+#' @param Y Transformed phenotype vector
+#' @return List containing beta, beta_vec, se_beta, tau
+calc_beta_vg_ve_restricted <- function(eigenVals, W, X, lambda, Y) {
+  n <- nrow(Y)
+  c <- ncol(W)
+  
+  # Compute D = lambda * eigenVals + 1
+  D <- lambda * eigenVals + 1.0
+  
+  # Form augmented covariate matrix [W, X]
+  WX <- cbind(W, X)
+  
+  # Compute (W|X)'D^-1(W|X)
+  WX_D <- WX / sqrt(D)
+  WXtDWX <- crossprod(WX_D)
+  WXtDWX_inv <- solve(WXtDWX)
+  
+  # Compute beta vector: (W|X)'D^-1Y
+  WXtDY <- crossprod(WX / D, Y)
+  beta_vec <- WXtDWX_inv %*% WXtDY
+  
+  # Extract SNP effect (last element)
+  beta <- beta_vec[nrow(beta_vec), 1]
+  
+  # Compute residual variance (REML)
+  # Y'PY where P = D^-1 - D^-1(W|X)[(W|X)'D^-1(W|X)]^-1(W|X)'D^-1
+  Y_D <- Y / D
+  fitted <- WX %*% beta_vec
+  fitted_D <- fitted / D
+  Y_P_Y <- sum(Y * Y_D) - sum(fitted * fitted_D)
+  
+  tau <- (n - c - 1) / Y_P_Y
+  
+  # Standard error of beta (last diagonal element)
+  se_beta <- sqrt(WXtDWX_inv[nrow(WXtDWX_inv), ncol(WXtDWX_inv)] / tau)
+  
+  return(list(
+    beta = as.numeric(beta),
+    beta_vec = beta_vec,
+    se_beta = as.numeric(se_beta),
+    tau = as.numeric(tau)
+  ))
+}
+
+# ============================================================================
+# Main pyGEMMA Function
+# ============================================================================
+
+#' Perform GEMMA analysis using REML
+#'
+#' @param Y Phenotype matrix (n x 1)
+#' @param X Genotype matrix (n x m), where m is number of SNPs
+#' @param W Covariate matrix (n x c)
+#' @param K Genetic relatedness matrix (GRM) (n x n)
+#' @param Z Optional random effect matrix (default NULL)
+#' @param snps Vector of SNP names (default NULL)
+#' @param verbose Verbosity level (0 = silent, 1 = progress, 2 = detailed)
+#' @param disable_checks Disable NaN checks for speed (default TRUE)
+#' @param grid Use grid search for lambda (slower but more robust, default FALSE)
+#' @param eigen Use eigendecomposition (default TRUE)
+#' @param nproc Number of parallel processes (default 1)
+#' @return Data frame with results
+pygemma <- function(Y, X, W, K, Z = NULL, snps = NULL, 
+                    verbose = 0, disable_checks = TRUE, 
+                    grid = FALSE, eigen = TRUE, nproc = 1) {
+  
+  # Convert to matrices and ensure proper types
+  Y <- as.matrix(Y)
+  X <- as.matrix(X)
+  W <- as.matrix(W)
+  K <- as.matrix(K)
+  
+  if (ncol(Y) != 1) {
+    Y <- matrix(Y, ncol = 1)
+  }
+  
+  # Apply Z transformation if provided
+  if (!is.null(Z)) {
+    Z <- as.matrix(Z)
+    K <- Z %*% K %*% t(Z)
+  }
+  
+  n <- nrow(Y)
+  m <- ncol(X)
+  c <- ncol(W)
+  
+  if (verbose > 0) {
+    cat("Running pyGEMMA with REML...\n")
+    cat(sprintf("  Samples: %d, SNPs: %d, Covariates: %d\n", n, m, c))
+  }
+  
+  # Eigendecomposition
+  if (verbose > 0) cat("Performing eigendecomposition...\n")
+  
+  if (eigen) {
+    eigen_decomp <- eigen(K, symmetric = TRUE)
+    eigenVals <- pmax(0, eigen_decomp$values)  # Set negative eigenvalues to 0
+    U <- eigen_decomp$vectors
+    
+    if (verbose > 0) cat("  Eigendecomposition complete\n")
+    
+    # Transform data
+    if (verbose > 0) cat("Transforming data...\n")
+    X <- t(U) %*% X
+    Y <- t(U) %*% Y
+    W <- t(U) %*% W
+    
+  } else {
+    # Use K directly (set negative values to 0)
+    K <- pmax(0, K)
+    eigenVals <- K
+  }
+  
+  # Check for NaN values
+  if (!disable_checks) {
+    if (any(is.nan(X)) || any(is.nan(Y)) || any(is.nan(W))) {
+      stop("NaN values present in data")
+    }
+  }
+  
+  if (verbose > 0) cat(sprintf("Testing %d SNPs...\n", m))
+  
+  # Define function to process each SNP
+  process_snp <- function(g) {
+    x_g <- X[, g, drop = FALSE]
+    
+    tryCatch({
+      # Calculate lambda for restricted model
+      lambda_restricted <- calc_lambda_restricted(eigenVals, Y, cbind(W, x_g), grid = grid)
+      
+      # Calculate beta, se, tau
+      params <- calc_beta_vg_ve_restricted(eigenVals, W, x_g, lambda_restricted, Y)
+      
+      # Wald test
+      F_wald <- (params$beta / params$se_beta)^2
+      p_wald <- pf(F_wald, df1 = 1, df2 = n - c - 1, lower.tail = FALSE)
+      
+      data.frame(
+        beta = params$beta,
+        se_beta = params$se_beta,
+        tau = params$tau,
+        lambda = lambda_restricted,
+        F_wald = F_wald,
+        p_wald = p_wald,
+        stringsAsFactors = FALSE
+      )
+      
+    }, error = function(e) {
+      if (verbose > 1) cat(sprintf("Error processing SNP %d: %s\n", g, e$message))
+      data.frame(
+        beta = NA_real_,
+        se_beta = NA_real_,
+        tau = NA_real_,
+        lambda = NA_real_,
+        F_wald = NA_real_,
+        p_wald = NA_real_,
+        stringsAsFactors = FALSE
+      )
+    })
+  }
+  
+  # Process SNPs (with or without parallelization)
+  if (nproc > 1 && m > nproc) {
+    if (verbose > 0) cat(sprintf("Using %d parallel processes...\n", nproc))
+    
+    # Setup cluster
+    cl <- makeCluster(min(nproc, m))
+    on.exit(stopCluster(cl), add = TRUE)
+    
+    # Export necessary objects and functions
+    clusterExport(cl, c("eigenVals", "Y", "W", "X", "n", "c", "grid",
+                        "calc_lambda_restricted", "calc_beta_vg_ve_restricted",
+                        "likelihood_derivative1_lambda", "likelihood_derivative2_lambda",
+                        "likelihood_lambda"),
+                  envir = environment())
+    
+    # Run in parallel with progress
+    if (verbose > 0) {
+      results_list <- pbapply::pblapply(1:m, process_snp, cl = cl)
+    } else {
+      results_list <- parLapply(cl, 1:m, process_snp)
+    }
+    
+  } else {
+    # Sequential processing
+    if (verbose > 0 && requireNamespace("pbapply", quietly = TRUE)) {
+      results_list <- pbapply::pblapply(1:m, process_snp)
+    } else {
+      results_list <- lapply(1:m, process_snp)
+    }
+  }
+  
+  # Combine results
+  results_df <- do.call(rbind, results_list)
+  
+  # Add SNP names if provided
+  if (!is.null(snps)) {
+    results_df$SNP <- snps
+  }
+  
+  if (verbose > 0) cat("Analysis complete!\n")
+  
+  return(results_df)
+}
+
+# ============================================================================
+# Helper function to load and prepare data
+# ============================================================================
+
+#' Prepare data for pyGEMMA analysis
+#'
+#' @param pheno Phenotype vector or data frame
+#' @param geno Genotype matrix
+#' @param covars Covariate matrix (intercept will be added if not present)
+#' @param kinship Kinship matrix
+#' @return List with prepared Y, X, W, K matrices
+prepare_gemma_data <- function(pheno, geno, covars = NULL, kinship) {
+  
+  # Prepare phenotype
+  Y <- as.matrix(pheno)
+  if (ncol(Y) != 1) Y <- matrix(Y, ncol = 1)
+  
+  # Prepare genotypes
+  X <- as.matrix(geno)
+  
+  # Prepare covariates (add intercept if needed)
+  if (is.null(covars)) {
+    W <- matrix(1, nrow = nrow(Y), ncol = 1)
+  } else {
+    W <- as.matrix(covars)
+    # Check if intercept exists (column of all 1s)
+    has_intercept <- any(apply(W, 2, function(col) all(col == col[1])))
+    if (!has_intercept) {
+      W <- cbind(1, W)
+    }
+  }
+  
+  # Prepare kinship
+  K <- as.matrix(kinship)
+  
+  # Check dimensions
+  n <- nrow(Y)
+  if (nrow(X) != n || nrow(W) != n || nrow(K) != n || ncol(K) != n) {
+    stop("Dimension mismatch in input matrices")
+  }
+  
+  list(Y = Y, X = X, W = W, K = K)
+}
+
+args    <- commandArgs(trailingOnly = TRUE)
+peak_id <- args[1]
+#peak_id <- "ppc_atac_peak_140488"
+
+if (is.na(peak_id) || peak_id == "") {
+  stop("No peak_id supplied. Usage: Rscript 02_run_peak_gemma_caQTL.R <peak_id>")
+}
+
+input_file  <- paste0("caqtl_gene_inputs/",  peak_id, ".rds")
+output_file <- paste0("caqtl_gene_outputs/", peak_id, ".rds")
+
+dir.create("caqtl_gene_outputs", showWarnings = FALSE)
+
+# Skip if already done
+if (file.exists(output_file)) {
+  cat("Output already exists, skipping:", peak_id, "\n")
+  quit(status = 0)
+}
+
+if (!file.exists(input_file)) {
+  stop("Input file not found: ", input_file)
+}
+
+# Load shared inputs
+W <- readRDS("caqtl_gene_inputs/W.rds")
+K <- readRDS("caqtl_gene_inputs/K.rds")
+
+# Load peak-specific inputs
+inp <- readRDS(input_file)
+
+cat(sprintf("Peak: %s | SNPs: %d\n", peak_id, ncol(inp$geno)))
+
+tryCatch({
+  
+  results <- pygemma(
+    Y       = inp$expr,
+    X       = inp$geno,
+    W       = W,
+    K       = K,
+    snps    = inp$snp_ids,
+    verbose = 0,
+    grid    = FALSE,
+    nproc   = 1
+  )
+  
+  results$Element_ID <- peak_id
+  
+  saveRDS(results, output_file)
+  cat("Done:", peak_id, "—", nrow(results), "SNPs tested\n")
+  
+}, error = function(e) {
+  saveRDS(list(peak_id = peak_id, error = conditionMessage(e)),
+          paste0("caqtl_gene_outputs/ERROR_", peak_id, ".rds"))
+  cat("ERROR for peak", peak_id, ":", conditionMessage(e), "\n")
+  quit(status = 1)
+})
