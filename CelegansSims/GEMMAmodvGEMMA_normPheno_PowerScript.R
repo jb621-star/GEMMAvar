@@ -1107,7 +1107,7 @@ h2_levels <- c("0005", "001", "0015", "002", "0025", "003", "0035", "004", "0045
 n_sims_per_h2 <- 1000
 
 # Base directory containing simulation files
-base_dir <- "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten"
+base_dir <- "~/" # Insert your base directory here
 
 # File patterns using %s for h2_int (e.g., "0005") and %d for sim_id
 # Example file: PhenotypeSimulated_singleSNP_h20005_UHetero1sc_sampledSNP_1.txt
@@ -1115,7 +1115,7 @@ pheno_template <- "PhenotypeSimulated_singleSNP_h2%s_UHetero1sc_sampledSNP_%d.tx
 se2_template <- "PhenotypeSimulated_singleSNP_residSE2_h2%s_UHetero1sc_sampledSNP_%d.txt"
 
 # Output directory
-output_dir <- "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten/power_analysis"
+output_dir <- "~/power_analysis"
 
 # Significance threshold
 alpha <- 0.05
@@ -1131,13 +1131,13 @@ cat("=== Loading Required Data ===\n\n")
 
 # Load genotype matrix
 cat("Loading genotype matrix...\n")
-load(file = "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/NORMgenomat.samp.Rda")  # Contains 'g'
+load(file = "~/data/NORMgenomat.samp.Rda")  # Contains 'g'
 g <- NORMAL.genomat.samp_mat
 cat(sprintf("  Loaded: %d strains × %d SNPs\n", nrow(g), ncol(g)))
 
 # Load kinship matrix
 cat("Loading kinship matrix...\n")
-fread(file = "/work/jb621/simHaplo/LD_mapping/ars_SS_u7o3_sims_v2/ars_SS_u7o3_sims/StepWiseSuSiE/invpdf_sampling_causal/gemma/grm_inbred/gemmaGRM.full.sXX.txt") -> kinship
+fread(file = "~/data/gemmaGRM.full.sXX.txt") -> kinship
 kinship_matrix <- as.matrix(kinship)
 cat(sprintf("  Loaded: %d × %d\n", nrow(kinship_matrix), ncol(kinship_matrix)))
 
@@ -1261,7 +1261,7 @@ if (file.exists(compiled_file)) {
 load(compiled_file)
 
 plotting_data <- power_data %>% 
-  filter(trait == "Trait_h2_0025_sim_3")
+  filter(trait == "Trait_h2_0025_sim_1")
 plot(x = plotting_data$value, y = plotting_data$se2, 
      xlab = "Average Simulated Trait Value per Strain", ylab = "Variance in Simulated Trait Value per Strain",
      main = "Mean-Variance Relationship for Simulated Trait Data with uniformly random variance: h2 = 0.025, sim 1")
