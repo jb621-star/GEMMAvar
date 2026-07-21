@@ -10,8 +10,8 @@ library(vcfR)
 load(file = "allchr_blocks_atonce_named_v3.Rda")
 
 #save(NORMAL.genomat.filt_mat, file = "/work/jb621/simHaplo/LD_mapping/taggingSNPs_v4_geno_df.Rda")
-load(file = "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/NORMgenomat.samp.Rda")
-load(file = "/work/jb621/simHaplo/LD_mapping/taggingSNPs_v4_geno_df.Rda")
+load(file = "NORMgenomat.samp.Rda")
+load(file = "taggingSNPs_v4_geno_df.Rda")
 
 taggingSNPs_v4_geno_df <- NORMAL.genomat.filt_mat / 2 
 
