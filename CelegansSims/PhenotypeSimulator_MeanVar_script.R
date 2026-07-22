@@ -6,8 +6,8 @@ library(ggplot2)
 library(data.table)
 
 # Step 1: Load empirical data and fit mean-variance relationship
-trait_file <- read_tsv("/hpc/group/baughlab/jb621/GEMMA_2_testing/slope100/full_traitData_slope.tsv", col_names = TRUE)
-se2_file <- read_tsv("/hpc/group/baughlab/jb621/GEMMA_2_testing/slope100/Strain_TotalVar.tsv", col_names = FALSE)
+trait_file <- read_tsv("~/data/full_traitData_slope.tsv", col_names = TRUE)
+se2_file <- read_tsv("~/data/Strain_TotalVar.tsv", col_names = FALSE)
 trait_file$se2 <- se2_file$X1
 
 hist(se2_file$X1)
@@ -29,16 +29,17 @@ summary(mv_fit)   # check slope is negative as you observed
 # Compare to the Z-scaled version of the data
 # Step 1: Load empirical data and fit mean-variance relationship
 # Load required data (your existing code)
-load(file = "/work/jb621/simHaplo/LD_mapping/taggingSNPs_v4_geno_df.Rda")
+load(file = "~/data/taggingSNPs_v4_geno_df.Rda")
 #GarterfullGRM <- read.table("/hpc/group/baughlab/jb621/BulkGWA/MIPseqEvo/MIPseqEvo/20ds/gemma/grm_inbred/gemmaGRM.full.sXX.txt")
-GarterfullGRM <- read.table("/work/jb621/simHaplo/LD_mapping/ars_SS_u7o3_sims_v2/ars_SS_u7o3_sims/StepWiseSuSiE/invpdf_sampling_causal/gemma/grm_inbred/gemmaGRM.full.sXX.txt", sep="\t", header=FALSE)
+GarterfullGRM <- read.table("~/data/gemmaGRM.full.sXX.txt", sep="\t", header=FALSE)
 GarterfullGRM <- as.matrix(GarterfullGRM)
-load(file = "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/NORMgenomat.samp.Rda")
+load(file = "~/data/NORMgenomat.samp.Rda")
 
-trait_file <- read_tsv("/hpc/group/baughlab/jb621/GEMMA_2_testing/slope100/full_traitData_slope.tsv", col_names = TRUE)
 trait_file_zscale <- trait_file %>% 
   mutate(slope = as.numeric(scale(slope)))
-se2_file <- read_tsv("/hpc/group/baughlab/jb621/GEMMA_2_testing/slope100/Strain_TotalVar_Zscale.tsv", col_names = TRUE)
+
+se2_file$Variance <- se2_file %>% 
+  mutate(Variance = as.numeric(scale(Variance)))
 trait_file_zscale$Variance <- se2_file$Variance
 
 fit <- lm(log(Variance) ~ slope, data = trait_file_zscale)
@@ -75,7 +76,7 @@ lines(trait_file_zscale$slope[ord], pred[, "lwr"], col = "red", lwd = 1, lty = 2
 lines(trait_file_zscale$slope[ord], pred[, "upr"], col = "red", lwd = 1, lty = 2)
 
 # Now apply the model to the Garter Snake standardized slope
-Garter_slope <- read_tsv("/hpc/group/baughlab/jb621/GEMMA_2_testing/slope192/GarterMIP_slope_avg.tsv")
+Garter_slope <- read_tsv("~/data/GarterMIP_slope_avg.tsv")
 Garter_slope <- Garter_slope %>% 
   mutate(slope = as.numeric(scale(mean)))
 
@@ -272,9 +273,9 @@ boxplot(phen_means_list[[1]] ~ NORMAL.genomat.samp_mat[,1], xlab = "Allele at Ca
 # Write Null Phentoype files
 for (s in 1:1000) {
   write.table(phen_means_list[[s]], 
-              file = paste0("/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten/PhenotypeSimulated_singleSNP_null_rlnormHETERO_mneg3sd4_0602_sampledSNP_", s, ".txt"), 
+              file = paste0("~/data/PhenotypeSimulated_singleSNP_null_rlnormHETERO_mneg3sd4_0602_sampledSNP_", s, ".txt"), 
               col.names = FALSE, row.names = FALSE)
   write.table(phen_vars_list[[s]],
-              file = paste0("/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten/PhenotypeSimulated_singleSNP_residSE2_null_rlnormHETERO_mneg3sd4_0602_sampledSNP_", s, ".txt"), 
+              file = paste0("~/data/PhenotypeSimulated_singleSNP_residSE2_null_rlnormHETERO_mneg3sd4_0602_sampledSNP_", s, ".txt"), 
               col.names = FALSE, row.names = FALSE)
 }
