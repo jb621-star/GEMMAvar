@@ -499,10 +499,10 @@ power_results <- data.frame(
 ################### 
 # Bringing in the PLINK-formatted simulated genotypes
 library(snpStats)
-gbr_gen <- read.plink("/work/jb621/GEMMA_2_pickrell_sims/ped_sim/gbr_simulated_maf01")
+gbr_gen <- read.plink("~/ped_sim/gbr_simulated_maf01")
 # Convert to numeric (0, 1, 2 counts of allele 2 / minor allele)
 
-gbr_sex <- read_tsv(file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/gbr_samples_sex.txt", col_names = F)
+gbr_sex <- read_tsv(file = "~/ped_sim/gbr_samples_sex.txt", col_names = F)
 # 0 = Female, 1 = Male
 sex <- if_else(gbr_sex$X2 == "M", 1,0)
 
@@ -541,7 +541,8 @@ genotype_matrix <- geno_numeric[, tested_snps]
 n_sex_biased <- 370
 sex_bias_genes <- sample(1:ngenes, n_sex_biased)
 
-kinship_matrix <- fread(file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/output/gbr_200snps.gemmaGRM.sXX.txt")
+# Note: Used GEMMA to generate kinship matrix using shuffled haplotypes 
+kinship_matrix <- fread(file = "~/ped_sim/output/gbr_200snps.gemmaGRM.sXX.txt")
 kinship_matrix <- as.matrix(kinship_matrix)
 
 nlibs <- ncol(kinship_matrix)
@@ -707,18 +708,10 @@ for (sim in 1:nsim) {
   # Storage for all gene-marker p-values
   pval_matrix_gemma_default <- matrix(1, nrow = n_genes_filt, ncol = n_markers)
   
-  # mm0 <- model.matrix(~ 1, data = data.frame(sample = 1:nlibs))
-  # y <- voom(d0, mm0, plot = FALSE)
-  
   # The reverse in this case: test marker against all genes
   for (m in 1:n_markers) {
     #m <- 1
     if (m %% 50 == 0) cat("  SNP", m, "/", n_markers, "\n")
-    
-    # causal_geno <- genotype_matrix[, m]
-    # design_voom <- model.matrix(~ causal_geno)
-    # 
-    # y <- voom(d0, design = design_voom, plot = F)
     
     for (g in 1:n_genes_filt) {
       #g <- 1
@@ -890,16 +883,6 @@ for (sim in 1:nsim) {
   fdr_emp_default <- ifelse(TP_default + FP_default > 0,
                             FP_default / (TP_default + FP_default), 0)
   
-  # ------- GEMMA DEFAULT - NULL CASE -------
-  # FP_default <- sum(sig_genes_default)   # All detections are FPs
-  # TN_default <- sum(!sig_genes_default)  # All non-detections are TNs
-  # TP_default <- 0
-  # FN_default <- 0
-  # 
-  # power_default  <- NA_real_             # Undefined - no true positives exist
-  # fdr_emp_default <- ifelse(FP_default > 0, 1.0, 0.0)  # All discoveries are false
-  # fpr_default <- FP_default / n_genes_filt              # Type I error rate
-  # 
   # Store results - GEMMA DEFAULT
   power_results <- rbind(power_results, data.frame(
     method = "GEMMA_default",
@@ -944,16 +927,6 @@ for (sim in 1:nsim) {
   fdr_emp_modified <- ifelse(TP_modified + FP_modified > 0,
                              FP_modified / (TP_modified + FP_modified), 0)
   
-  # # ------- GEMMA MODIFIED - NULL CASE -------
-  # # FP_default <- sum(sig_genes_default)   # All detections are FPs
-  # # TN_default <- sum(!sig_genes_default)  # All non-detections are TNs
-  # # TP_default <- 0
-  # # FN_default <- 0
-  # # 
-  # # power_default  <- NA_real_             # Undefined - no true positives exist
-  # # fdr_emp_default <- ifelse(FP_default > 0, 1.0, 0.0)  # All discoveries are false
-  # # fpr_default <- FP_default / n_genes_filt              # Type I error rate
-  # # 
   # # Store results - GEMMA MODIFIED
   power_results <- rbind(power_results, data.frame(
     method = "GEMMA_modified",
@@ -1052,5 +1025,5 @@ print(summary_stats)
 
 # Save results
 save(power_results, summary_stats, kinship_matrix,
-     file = "/work/jb621/GEMMA_2_pickrell_sims/eqtl_gemma_voomVedgeR_NOSHRINKAGE_power_simulation_fc325_results_041326.RData")
+     file = "~/eqtl_gemma_voomVedgeR_power_simulation_fcX_results.RData")
 
