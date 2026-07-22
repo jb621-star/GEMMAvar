@@ -4,7 +4,7 @@ library(coloc)
 library(data.table)
 library(tidyverse)
 
-setwd("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/")
+setwd("~/QTL_mapping/")
 
 # Run these next two lines ONLY when you have combinded the two GEMMA version results
 # load(file = "PPC_eQTL_SNPs_bothGEMMA.Rda")
