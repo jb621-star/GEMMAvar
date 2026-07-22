@@ -12,7 +12,7 @@ gene_list <- readLines("gemma_gene_inputs/gene_list.txt")
 cat("Genes expected:", length(gene_list), "\n")
 
 # ---- Check job completion status ----
-output_files <- paste0("gemmamod_gene_outputs/", gene_list, "NOSHRINKAGE.rds")
+output_files <- paste0("gemmamod_gene_outputs/", gene_list, ".rds")
 completed    <- file.exists(output_files)
 error_files  <- list.files("gemmamod_gene_outputs", pattern = "^ERROR_", full.names = TRUE)
 
