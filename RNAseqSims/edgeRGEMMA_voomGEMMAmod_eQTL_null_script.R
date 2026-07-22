@@ -947,9 +947,9 @@ print(summary_stats)
 
 # Save results
 save(power_results, summary_stats, kinship_matrix,
-     file = "/work/jb621/GEMMA_2_pickrell_sims/eqtl_gemma_voomNOVAR_wCov_power_simulation_null_results_041326.RData")
+     file = "~/eqtl_gemma_voomNOVAR_wCov_power_simulation_null_results.RData")
 
-load(file = "/work/jb621/GEMMA_2_pickrell_sims/eqtl_gemma_voomVedgeR_FDR_simulation_results_031226.RData")
+#load(file = "/work/jb621/GEMMA_2_pickrell_sims/eqtl_gemma_voomVedgeR_FDR_simulation_results_031226.RData")
 hist(unlist(modified_FDR_list),
      main = "GEMMAmod p-values under null RNA-seq simulations",
      xlab = "p-values")
