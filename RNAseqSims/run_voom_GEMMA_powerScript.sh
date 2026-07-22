@@ -28,7 +28,7 @@ echo "Memory allocated: $SLURM_MEM_PER_NODE MB"
 cd $SLURM_SUBMIT_DIR
 
 # Run the R script
-Rscript /work/jb621/GEMMA_2_pickrell_sims/limma_voom_to_GEMMA_eQTL_powerScript_wCov_fc2_03302026.R
+Rscript ~/edgeRGEMMA_voomGEMMAvar_eQTL_power_script.R
 
 # Print completion information
 echo "End time: $(date)"
