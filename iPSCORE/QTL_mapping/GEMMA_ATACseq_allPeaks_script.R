@@ -6,7 +6,7 @@ library(tidyverse)
 library(data.table)
 library(parallel)
 
-setwd("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/")
+setwd("~/QTL_mapping/")
 
 # ============================================================================
 # Core REML Likelihood Functions
@@ -550,7 +550,7 @@ count_meta_ppc <- count_meta %>%
   filter(Tissue == "PPC")
 
 count_meta_ppc_samples <- data.frame(cbind(count_meta_ppc$WGS_UUID, count_meta_ppc$WGS_UUID))
-write_tsv(count_meta_ppc_samples, file = "/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/ppc_samples.txt", col_names = F) 
+write_tsv(count_meta_ppc_samples, file = "~/ppc_samples.txt", col_names = F) 
 
 meta_map <- count_meta_ppc %>%
   select(ATAC_UUID, WGS_UUID, Subject_UUID)
@@ -858,7 +858,7 @@ cat("Avg SNPs/gene   :", round(nrow(testing_pairs) / n_distinct(testing_pairs$El
 
 #save(genos_mat_filtered, edgeR_expr_ordered, dge_lead, rna_cov_ordered, filtered_kinship, testing_pairs,
 #     file = "allPairs_testing_inputs_050226.Rda")
-load(file = "allPairs_testing_inputs_050226.Rda")
+# load(file = "allPairs_testing_inputs_050226.Rda")
 
 rna_cov_ordered_matrix <- rna_cov_ordered %>% 
   select(!c("Subject_UUID", "RNA_UUID"))
