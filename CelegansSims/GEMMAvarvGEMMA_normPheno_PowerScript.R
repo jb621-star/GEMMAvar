@@ -1148,7 +1148,7 @@ causal_snp_map <- NULL
 metadata_files <- c(
   file.path(base_dir, "causal_snps.txt"),
   file.path(base_dir, "simulation_metadata.txt"),
-  "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/sampled_snp_info.txt"
+  "~/sampled_snp_info.txt"
 )
 
 for (meta_file in metadata_files) {
@@ -1322,7 +1322,7 @@ plot(x = plotting_data$value, y = plotting_data$se2,
 cat("\n=== Running Power Tests ===\n\n")
 
 # Check if results already exist
-results_file <- file.path(output_dir, "GEMMA_DefvModTesting_UHetero1sc_NOSHRINKAGE_power_results.Rda")
+results_file <- file.path(output_dir, "GEMMA_DefvModTesting_UHetero1sc_power_results.Rda")
 
 if (file.exists(results_file)) {
   cat("Loading existing power results...\n")
@@ -1366,7 +1366,7 @@ cat("\n=== Calculating Power Gain Statistics ===\n\n")
 power_gain_stats <- calculate_power_gain_statistics(power_results)
 
 # Save statistics
-stats_file <- file.path(output_dir, "GEMMA_DefVModTesting_NOSHRINKAGE_power_gain_statistics.Rda")
+stats_file <- file.path(output_dir, "GEMMA_DefVModTesting_power_gain_statistics.Rda")
 save(power_gain_stats, file = stats_file)
 
 # ============================================================================
@@ -1488,7 +1488,7 @@ p1 <- ggplot(summary_ci, aes(x = h2, y = power_pooled, color = method, group = m
   )
 p1
 
-plots_file <- file.path(output_dir, "GEMMA_DefvModTesting_UHetero1sc_NOSHRINKAGE_power_plots.Rda")
+plots_file <- file.path(output_dir, "GEMMA_DefvModTesting_UHetero1sc_power_plots.Rda")
 
 save(plots, file = plots_file)
 
