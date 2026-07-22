@@ -506,10 +506,11 @@ power_results <- data.frame(
 # Bringing in the simulated genotypes
 # They're plink formatted now 
 library(snpStats)
-gbr_gen <- read.plink("/work/jb621/GEMMA_2_pickrell_sims/ped_sim/gbr_simulated_maf01")
+# The simulted genotypes can be generated via the corresponding HAPGEN shell script
+gbr_gen <- read.plink("~/ped_sim/gbr_simulated_maf01")
 # Convert to numeric (0, 1, 2 counts of allele 2 / minor allele)
 
-gbr_sex <- read_tsv(file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/gbr_samples_sex.txt", col_names = F)
+gbr_sex <- read_tsv(file = "~/ped_sim/gbr_samples_sex.txt", col_names = F)
 # 0 = Female, 1 = Male
 sex <- if_else(gbr_sex$X2 == "M", 1,0)
 
@@ -527,35 +528,6 @@ geno_filtered <- gbr_gen$genotypes[, keep_snps]
 map_filtered  <- gbr_gen$map[keep_snps, ]
 
 geno_numeric <- as(geno_filtered, "numeric")
-
-#asw_gen <- fread( file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/asw_simulated.controls.gen")
-#asw_samp <- fread( file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/asw_simulated.controls.sample")
-
-# genotype_matrix <- as.matrix(geno_numeric)
-# genotype_centered <- scale(genotype_matrix, center = TRUE, scale = FALSE)
-# 
-# # Calculate kinship matrix: K = (1/p) * Z * Z^T
-# # where Z is centered genotype matrix and p is number of markers
-# kinship_matrix <- tcrossprod(genotype_centered) / n_markers
-# 
-# # GEMMA normalizes so the mean diagonal is 1
-# kinship_matrix <- kinship_matrix / mean(diag(kinship_matrix))
-# 
-# # Ensure positive definiteness (if needed)
-# min_eval <- min(eigen(kinship_matrix, only.values = TRUE)$values)
-# if (min_eval < 0) {
-#   kinship_matrix <- kinship_matrix + diag(nlibs) * (abs(min_eval) + 0.01)
-# }
-
-#asw_gen <- fread( file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/asw_simulated.controls.gen")
-#asw_samp <- fread( file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/asw_simulated.controls.sample")
-
-# cat("SNPs before filtering:", ncol(asw_gen$genotypes), "\n")
-# cat("SNPs after filtering:",  ncol(geno_filtered), "\n")
-# 
-# # Which SNPs fail?
-# failing_snps <- rownames(col_sum)[which(mafs < 0.1)]
-# cat("SNPs failing MAF > 0.1:", length(failing_snps), "\n")
 
 ############################################################################
 ### RUN POWER SIMULATIONS
@@ -577,32 +549,8 @@ genotype_matrix <- geno_numeric[, tested_snps]
 n_sex_biased <- 370
 sex_bias_genes <- sample(1:ngenes, n_sex_biased)
 
-# corr_sim_gbr <- (cor(genotype_matrix))^2
-# library(pheatmap)
-# pheatmap(corr_sim_gbr, cluster_rows = FALSE, cluster_cols = FALSE)
-
-# Create a new SnpMatrix with your 200 sampled SNPs
-# geno_sampled <- geno_filtered[, tested_snps]
-# map_sampled  <- map_filtered[tested_snps, ]
-# 
-# # Write to PLINK format
-# write.plink(
-#   file.base = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/gbr_200snps",
-#   snps = geno_sampled,
-#   pedigree = gbr_gen$fam$pedigree,
-#   id = gbr_gen$fam$member,
-#   father = gbr_gen$fam$father,
-#   mother = gbr_gen$fam$mother,
-#   sex = gbr_gen$fam$sex,
-#   phenotype = gbr_gen$fam$affected,
-#   chromosome = map_sampled$chromosome,
-#   genetic.distance = map_sampled$cM,
-#   position = map_sampled$position
-#   allele.1 = map_sampled$allele.1,
-#   allele.2 = map_sampled$allele.2
-# )
-
-kinship_matrix <- fread(file = "/work/jb621/GEMMA_2_pickrell_sims/ped_sim/output/gbr_200snps.gemmaGRM.sXX.txt")
+# Note: used GEMMA to generate the kinship matrices for all analyses
+kinship_matrix <- fread(file = "~/ped_sim/output/gbr_200snps.gemmaGRM.sXX.txt")
 kinship_matrix <- as.matrix(kinship_matrix)
 
 nlibs <- ncol(kinship_matrix)
@@ -624,24 +572,6 @@ for (sim in 1:nsim) {
   # GENERATE BASELINE GENE ABUNDANCES
   #------------------------------------------------------------------------
   
-  # Library sizes with high variation to create heteroscedasticity
-  # expected.lib.size <- 20e6 * rep(c(1, 0.1), nlibs/2 + 1)
-  # expected.lib.size <- expected.lib.size[-92]
-  
-  # simulate_libsizes <- function(n, mean_depth = 2e7, cv = 0.8) {
-  #   shape <- 1 / cv^2
-  #   scale <- mean_depth / shape
-  #   rgamma(n, shape = shape, scale = scale)
-  # }
-  
-  # simulate_libsizes <- function(n, mean_depth = 2e7, cv = 0.8) {
-  #   # Bimodal: mix of low and high depth samples
-  #   n_low <- round(n * 0.3)
-  #   n_high <- n - n_low
-  #   c(rgamma(n_low, shape = 2, scale = mean_depth * 0.2 / 2),
-  #     rgamma(n_high, shape = 2, scale = mean_depth * 1.3 / 2))
-  # }
-  
   # These two, along with the BCV, are probably the most important dials of noise
   simulate_libsizes <- function(n, mean_depth = 2e7) {
     depths <- rgamma(n, shape = 1.2, scale = mean_depth / 1.2)
@@ -654,7 +584,6 @@ for (sim in 1:nsim) {
   #hist(expected.lib.size)
   
   # Use realistic abundance distribution
-  # MORE EXTREME abundance distribution  
   baselineprop <- qAbundanceDist((1:ngenes)/(ngenes+1))
   baselineprop <- baselineprop^2.5  # Exaggerate differences
   baselineprop <- baselineprop / sum(baselineprop)
@@ -760,23 +689,6 @@ for (sim in 1:nsim) {
   
   counts <- matrix(rpois(ngenes * nlibs, lambda = mu), ngenes, nlibs)
   
-  # Replace rpois with rnbinom
-  # size parameter controls overdispersion:
-  # smaller size = more overdispersion = more noise
-  # dispersion <- 0.5  # smaller = noisier (try 0.05 to 0.5)
-  # 
-  # counts <- matrix(
-  #   rnbinom(ngenes * nlibs, mu = mu, size = 1/dispersion),
-  #   ngenes, nlibs
-  # )
-  
-  #------------------------------------------------------------------------
-  # FILTER LOW-COUNT GENES
-  #------------------------------------------------------------------------
-  
-  # keep <- rowSums(counts) >= 5
-  # counts_filt <- counts[keep, ]
-  
   #========================================================================
   # PREPARE DATA FOR GEMMA
   #========================================================================
@@ -787,21 +699,6 @@ for (sim in 1:nsim) {
   cutoff <- 1
   keep <- which(apply(cpm(d0), 1, max) > cutoff)
   d0 <- d0[keep,]
-  
-  # cpm_tmm <- cpm(d0, normalized.lib.sizes = TRUE)
-  # 
-  # invnorm <- function(x) {
-  #   r <- rank(x, ties.method = "average")
-  #   qnorm((r - 0.5) / length(r))
-  # }
-  # 
-  # expr_int <- t(apply(cpm_tmm, 1, invnorm))
-  
-  # Update eQTL info for filtered genes
-  # eqtl_info_filt <- eqtl_info[eqtl_info$gene_id %in% which(keep), ]
-  # # Remap gene IDs to filtered indices
-  # gene_id_mapping <- setNames(1:sum(keep), which(keep))
-  # eqtl_info_filt$gene_id_filt <- gene_id_mapping[as.character(eqtl_info_filt$gene_id)]
   
   # Update eQTL info for filtered genes
   eqtl_info_filt <- eqtl_info[eqtl_info$gene_id %in% keep, ]
@@ -903,104 +800,10 @@ for (sim in 1:nsim) {
   
   # # A gene is called significant if its best marker passes FDR threshold
   sig_genes_default <- apply(adj_pval_matrix_default, 1, min) < alpha_fdr
-  # 
-  # Per-gene BH correction (more standard for eQTL analysis)
-  #adj_pval_matrix_default <- t(apply(pval_matrix_gemma_default, 1, p.adjust, method = "BH"))
-  
-  # Then call a gene significant if its best adjusted p-value < alpha
-  #sig_genes_default <- apply(adj_pval_matrix_default, 1, min) < alpha_fdr
-  # sig_genes_default <- apply(pval_matrix_gemma_default, 1, min) < alpha_fdr / 200
   
   # For each gene, find the most significant marker
   best_marker_default <- apply(adj_pval_matrix_default, 1, which.min)
   best_pval_default <- apply(adj_pval_matrix_default, 1, min)
-  
-  # best_marker_default <- apply(pval_matrix_gemma_default, 1, which.min)
-  # best_pval_default <- apply(pval_matrix_gemma_default, 1, min)
-  
-  #========================================================================
-  # METHOD 2: GEMMA (MODIFIED - with voom-like weights)
-  #========================================================================
-  
-  # Storage for all gene-marker p-values
-  # pval_matrix_gemma_modified <- matrix(1, nrow = n_genes_filt, ncol = n_markers)
-  # 
-  # # The reverse in this case: test marker against all genes
-  # for (m in 1:n_markers) {
-  #   #m <- 9 # ind 54 and 18 are outliers
-  #   if (m %% 50 == 0) cat("  SNP", m, "/", n_markers, "\n")
-  #   causal_geno <- genotype_matrix[, m]
-  #   design_voom <- model.matrix(~ causal_geno)
-  # 
-  #   y <- voom(d0, design = design_voom, plot = F)
-  # 
-  #   for (g in 1:n_genes_filt) {
-  #     #g <- 246
-  #     # Get voom-transformed expression with appropriate design
-  #     expr_gene <- y$E[g, , drop = FALSE]
-  #     weights_gene <- y$weights[g, , drop = FALSE]
-  #     
-  #     # Calculate variance estimates from voom weights
-  #     se_pheno <- as.matrix(1/weights_gene)
-  #     log_s2 <- log(se_pheno)
-  #     mu <- mean(log_s2)
-  #     
-  #     lambda_shrink <- 0.2
-  #     log_s2_shr <- (1 - lambda_shrink) * log_s2 + lambda_shrink * mu
-  #     s2_shr <- exp(log_s2_shr)
-  #     
-  #     w <- 1 / sqrt(s2_shr)
-  #     Ww <- diag(as.vector(w))
-  #     
-  #     # Whiten
-  #     K_whitened <- Ww %*% as.matrix(kinship_matrix) %*% Ww
-  #     
-  #     Y_w <- Ww %*% t(expr_gene)
-  #     X_w <- Ww %*% genotype_matrix             # X is n × p
-  #     W_fe_w <- Ww %*% W           # fixed effects
-  #     
-  #     # Prepare data
-  #     data <- prepare_gemma_data(
-  #       pheno = Y_w,
-  #       geno = X_w[, m],
-  #       covars = W_fe_w,
-  #       kinship = K_whitened
-  #     )
-  #     
-  #     # Run analysis
-  #     gemma_results <- pygemma(
-  #       Y = data$Y,
-  #       X = data$X,
-  #       W = W_fe_w,
-  #       K = data$K,
-  #       snps = snp_names[m],
-  #       verbose = 0,
-  #       grid = FALSE,  # Use fast optimization
-  #       nproc = 4      # Use 4 cores
-  #     )
-  #     
-  #     # Extract p-values for all markers
-  #     pval_matrix_gemma_modified[g, m] <- gemma_results$p_wald
-  #     #pval_matrix_gemma_modified[g, ] <- gemma_results$p_wald
-  #     #if (g %% 250 == 0) cat("  Transcript", g, "/", n_genes_filt, "\n")
-  #     
-  #   }
-  # }
-  # 
-  # # For each gene, find the most significant marker
-  # # Apply FDR correction across all tests
-  # adj_pvals_modified <- p.adjust(as.vector(pval_matrix_gemma_modified), method = "BH")
-  # #adj_pvals_modified <- as.vector(pval_matrix_gemma_modified)
-  # adj_pval_matrix_modified <- matrix(adj_pvals_modified, nrow = n_genes_filt, ncol = n_markers)
-  # 
-  # # # A gene is called significant if its best marker passes FDR threshold
-  # sig_genes_modified <- apply(adj_pval_matrix_modified, 1, min) < alpha_fdr
-  # 
-  # best_marker_modified <- apply(adj_pval_matrix_modified, 1, which.min)
-  # best_pval_modified <- apply(adj_pval_matrix_modified, 1, min)
-  
-  # best_marker_modified <- apply(pval_matrix_gemma_modified, 1, which.min)
-  # best_pval_modified <- apply(pval_matrix_gemma_modified, 1, min)
   
   #========================================================================
   # EVALUATE PERFORMANCE FOR BOTH METHODS
@@ -1016,35 +819,6 @@ for (sim in 1:nsim) {
     true_marker[gene_idx] <- eqtl_info_filt$marker_id[i]
   }
   
-  # ------- GEMMA DEFAULT -------
-  # TP_default <- 0
-  # FP_default <- 0
-  # FN_default <- 0
-  # TN_default <- 0
-  # 
-  # for (g in 1:n_genes_filt) {
-  #   if (is_eqtl[g]) {
-  #     if (sig_genes_default[g]) {
-  #       if (best_marker_default[g] == true_marker[g]) {
-  #         TP_default <- TP_default + 1  # Correct detection
-  #       } else {
-  #         FP_default <- FP_default + 1  # Wrong marker
-  #       }
-  #     } else {
-  #       FN_default <- FN_default + 1  # Missed the eQTL
-  #     }
-  #   } else {
-  #     if (sig_genes_default[g]) {
-  #       FP_default <- FP_default + 1  # False positive
-  #     } else {
-  #       TN_default <- TN_default + 1  # Correct null
-  #     }
-  #   }
-  # }
-  # 
-  # power_default <- ifelse(sum(is_eqtl) > 0, TP_default / sum(is_eqtl), 0)
-  # fdr_emp_default <- ifelse(TP_default + FP_default > 0,
-  #                           FP_default / (TP_default + FP_default), 0)
   
   # ------- GEMMA DEFAULT - NULL CASE -------
   FP_default <- sum(sig_genes_default)   # All detections are FPs
@@ -1070,36 +844,6 @@ for (sim in 1:nsim) {
     stringsAsFactors = FALSE
   ))
   
-  # ------- GEMMA MODIFIED -------
-  # TP_modified <- 0
-  # FP_modified <- 0
-  # FN_modified <- 0
-  # TN_modified <- 0
-  # 
-  # for (g in 1:n_genes_filt) {
-  #   if (is_eqtl[g]) {
-  #     if (sig_genes_modified[g]) {
-  #       if (best_marker_modified[g] == true_marker[g]) {
-  #         TP_modified <- TP_modified + 1  # Correct detection
-  #       } else {
-  #         FP_modified <- FP_modified + 1  # Wrong marker
-  #       }
-  #     } else {
-  #       FN_modified <- FN_modified + 1  # Missed the eQTL
-  #     }
-  #   } else {
-  #     if (sig_genes_modified[g]) {
-  #       FP_modified <- FP_modified + 1  # False positive
-  #     } else {
-  #       TN_modified <- TN_modified + 1  # Correct null
-  #     }
-  #   }
-  # }
-  # 
-  # power_modified <- ifelse(sum(is_eqtl) > 0, TP_modified / sum(is_eqtl), 0)
-  # fdr_emp_modified <- ifelse(TP_modified + FP_modified > 0,
-  #                            FP_modified / (TP_modified + FP_modified), 0)
-  # 
   # ------- GEMMA MODIFIED - NULL CASE -------
   FP_modified <- sum(sig_genes_modified)   # All detections are FPs
   TN_modified <- sum(!sig_genes_modified)  # All non-detections are TNs
@@ -1131,20 +875,6 @@ for (sim in 1:nsim) {
 ############################################################################
 
 # Calculate mean power and FDR for each method and fold change
-# summary_stats <- power_results %>%
-#   group_by(method, fc) %>%
-#   summarise(
-#     mean_power = mean(power, na.rm = TRUE),
-#     sd_power = sd(power, na.rm = TRUE),
-#     mean_fdr = mean(fdr_empirical, na.rm = TRUE),
-#     sd_fdr = sd(fdr_empirical, na.rm = TRUE),
-#     mean_TP = mean(true_positives),
-#     mean_FP = mean(false_positives),
-#     mean_FN = mean(false_negatives),
-#     mean_TN = mean(true_negatives),
-#     .groups = "drop"
-#   )
-
 summary_stats <- power_results %>%
   group_by(method, fc) %>%
   summarise(
