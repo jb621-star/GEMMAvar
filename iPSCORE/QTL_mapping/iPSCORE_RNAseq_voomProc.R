@@ -3,7 +3,7 @@ library(limma)
 library(tidyverse)
 library(data.table)
 
-counts <- read.delim("/work/jb621/GEMMAmod_iPSCORE/ppc_gene_counts.txt", row.names = 1)
+counts <- read.delim("~/ppc_gene_counts.txt", row.names = 1)
 
 # Need to remove leading X from any column names
 colnames(counts) <- gsub("X", "", colnames(counts))
@@ -11,7 +11,7 @@ colnames(counts) <- gsub("X", "", colnames(counts))
 colnames(counts) <- gsub("\\.", "-", colnames(counts))
 
 # Sample Metadata
-count_meta <- read_csv("/work/jb621/GEMMAmod_iPSCORE/RNA_SampleMetaData.csv")
+count_meta <- read_csv("~/data/RNA_SampleMetaData.csv")
 
 #colnames(counts) %in% count_meta$RNA_UUID # colnames of counts are RNA_UUID
 # There are only 220 iPSC samples, the rest are either pancreatic progenitor cell samples
@@ -33,7 +33,7 @@ id_crosswalk <- count_meta_PPC %>%
   mutate(formatted_id = paste0("Fam", Family_ID, "_Clone", Clone, "_Pass", Passage))
 
 # Save it for later
-write_tsv(id_crosswalk, "/work/jb621/id_crosswalk.tsv")
+write_tsv(id_crosswalk, "~/id_crosswalk.tsv")
 
 # See which Fam/Clone/Pass combos are duplicated
 #dupes <- id_crosswalk$formatted_id[duplicated(id_crosswalk$formatted_id)]
@@ -213,14 +213,14 @@ cat("Final expression matrix:", nrow(expr_int), "genes x",
 # -----------------------------------------------------------------
 # Normalized + filtered + INT-transformed matrix (for eQTL input)
 write.table(expr_int,
-            file      = "/work/jb621/GEMMAmod_iPSCORE/ppc_expr_int_normalized.txt",
+            file      = "~/ppc_expr_int_normalized.txt",
             sep       = "\t",
             quote     = FALSE,
             col.names = NA)   # col.names = NA writes row names correctly
 
 # TMM CPM (pre-INT, post-filter) — useful for QC / visualization
 write.table(tmm_cpm_filtered,
-            file      = "/work/jb621/GEMMAmod_iPSCORE/ppc_tmm_cpm_filtered.txt",
+            file      = "~/ppc_tmm_cpm_filtered.txt",
             sep       = "\t",
             quote     = FALSE,
             col.names = NA)
@@ -259,14 +259,14 @@ v <- voom(dge_filtered, design, plot = TRUE)
 # -----------------------------------------------------------------
 # 0. Load data
 # -----------------------------------------------------------------
-atac_counts <- read.delim("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/ppc_atac_counts.txt",
+atac_counts <- read.delim("~/ppc_atac_counts.txt",
                           row.names = 1)
 
 cat("Raw ATAC counts matrix dimensions:",
     nrow(atac_counts), "peaks x", ncol(atac_counts), "samples\n")
 
 # Need to map atac_peaks onto chromosome locations so I can filter out the sex chr
-atac_peaks <- read.delim("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/ppc_atac_peak.bed")
+atac_peaks <- read.delim("~/ppc_atac_peak.bed")
 sex_chroms <- c("chrX", "chrY", "chrM")
 atac_peaks_auto <- atac_peaks[!atac_peaks$Chromosome %in% sex_chroms, ]
 
@@ -503,7 +503,7 @@ cat("Weights CV (should be >> 0):",
 # Save output
 # -----------------------------------------------------------------
 write.table(tmm_cpm_filtered,
-            file      = "/work/jb621/GEMMAmod_iPSCORE/ppc_atac_tmm_filtered.txt",
+            file      = "~/ppc_atac_tmm_filtered.txt",
             sep       = "\t",
             quote     = FALSE,
             col.names = NA)   # col.names = NA writes row names correctly
@@ -617,7 +617,7 @@ ppc_eqtl_peer <- calculate_peer_factors(ppc_rna_mat, n_peer_max_rna)
 
 # Save all PEER factors (you will later select optimal n=22 for PPC eQTL)
 fwrite(ppc_eqtl_peer, 
-       file      = "/work/jb621/GEMMAmod_iPSCORE/PPC_eQTL_peer_factors.txt", 
+       file      = "~/data/PPC_eQTL_peer_factors.txt", 
        sep       = "\t", 
        row.names = TRUE, 
        col.names = TRUE)
@@ -653,7 +653,7 @@ ppc_caqtl_peer <- calculate_peer_factors(ppc_atac_mat, n_peer_max_atac)
 
 # Save all PEER factors (you will later select optimal n=20 for PPC caQTL)
 fwrite(ppc_caqtl_peer, 
-       file      = "/work/jb621/GEMMAmod_iPSCORE/PPC_caQTL_peer_factors.txt", 
+       file      = "~/data/PPC_caQTL_peer_factors.txt", 
        sep       = "\t", 
        row.names = TRUE, 
        col.names = TRUE)
@@ -727,7 +727,7 @@ process_covariates(config, peerdata)
 
 # OPTIONAL
 # Aligning caQTL, eQTL, and GWA Intervals 
-GWAS_QTL_Colocalization_Summaries <- read_tsv(file = "/work/jb621/GEMMAmod_iPSCORE/GWAS_QTL_Colocalization_Summaries.txt")
+GWAS_QTL_Colocalization_Summaries <- read_tsv(file = "~/GWAS_QTL_Colocalization_Summaries.txt")
 GWAS_QTL_Colocalization_Summaries_PPC <- GWAS_QTL_Colocalization_Summaries %>% 
   dplyr::filter(Tissue == "PPC")
 
@@ -751,7 +751,7 @@ PPC_ATAC_bed_enriched_intervals <- PPC_ATAC_bed_tested_intervals %>%
   dplyr::filter(Element_ID %in% c("ppc_atac_peak_244298", "ppc_atac_peak_244305"))
 
 # various QTL results
-PPC_caQTLs_sumStats <- fread(file = "/work/jb621/GEMMAmod_iPSCORE/PPC_discovery_caqtls_stats.txt")
+PPC_caQTLs_sumStats <- fread(file = "~/PPC_discovery_caqtls_stats.txt")
 PPC_caQTLs_sumStats_JAZF1 <- PPC_caQTLs_sumStats %>% 
   dplyr::filter(ElementID %in% c("ppc_atac_peak_244298", "ppc_atac_peak_244305"))
 # Some SNPs have multiple test statistics, and that's because of the "format that they"discovery" 
@@ -763,243 +763,8 @@ PPC_caQTLs_sumStats_JAZF1 <- PPC_caQTLs_sumStats %>%
 # associations. For each iteration, we performed the two-step procedure described 
 # above and considered conditional eQTLs with q-values <0.05 as significant.
 
-PPC_eQTLs_sumStats <- fread(file = "/work/jb621/GEMMAmod_iPSCORE/PPC_discovery_eqtls_stats.txt")
+PPC_eQTLs_sumStats <- fread(file = "~/PPC_discovery_eqtls_stats.txt")
 PPC_eQTLs_sumStats_JAZF1 <- PPC_eQTLs_sumStats %>% 
   dplyr::filter(ElementID %in% "ENSG00000153814.13")
-
-
-# Fine-mapping using ENCODE DNase Hypersensitivity I  Sites
-library(httr)
-library(jsonlite)
-library(dplyr)
-library(purrr)
-
-outdir <- "/work/jb621/GEMMAmod_iPSCORE/ENCODE_DHS"
-fn <- file.path(outdir, "encode_dnase.tsv")
-
-if (!file.exists(fn)) {
-  
-  base_url <- "https://www.encodeproject.org/search/"
-  
-  # Build query string manually to allow repeated 'field' params
-  fixed_params <- list(
-    type            = "Experiment",
-    assay_term_name = "DNase-seq",
-    assembly        = "hg38",
-    `files.file_type` = "bed narrowPeak",
-    limit           = "all",
-    format          = "json"
-  )
-  
-  field_params <- c(
-    "accession",
-    "biosample_term_name",
-    "biosample_type",
-    "files.accession",
-    "files.file_type",
-    "files.href",
-    "files.date_created",
-    "files.assembly",
-    "files.output_type"
-  )
-  
-  # Collapse into a URL manually
-  fixed_str  <- paste(names(fixed_params),
-                      sapply(fixed_params, URLencode, reserved = TRUE),
-                      sep = "=", collapse = "&")
-  field_str  <- paste0("field=", URLencode(field_params, reserved = TRUE),
-                       collapse = "&")
-  full_url   <- paste0(base_url, "?", fixed_str, "&", field_str)
-  
-  res <- GET(full_url, add_headers(Accept = "application/json"))
-  stop_for_status(res)
-  
-  dat <- fromJSON(
-    content(res, "text", encoding = "UTF-8"),
-    simplifyVector = FALSE
-  )
-  
-  experiments <- dat[["@graph"]]
-  cat("Experiments retrieved:", length(experiments), "\n")
-  
-  # Inspect first experiment's files to verify fields are populated
-  if (length(experiments) > 0) {
-    cat("Files in first experiment:", length(experiments[[1]]$files), "\n")
-    if (length(experiments[[1]]$files) > 0) {
-      cat("Fields in first file:\n")
-      print(names(experiments[[1]]$files[[1]]))
-    }
-  }
-  
-  safe_date <- function(x) {
-    d <- try(as.Date(x), silent = TRUE)
-    if (inherits(d, "try-error") || is.na(d)) return(as.Date("1900-01-01"))
-    return(d)
-  }
-  
-  results <- map_dfr(experiments, function(exp) {
-    
-    files <- exp$files
-    if (is.null(files) || length(files) == 0) return(NULL)
-    
-    # Keep only hg38 narrowPeak files
-    np <- keep(files, ~ isTRUE(.x$file_type == "bed narrowPeak") &&
-                 isTRUE(.x$assembly  == "hg38"))
-    
-    if (length(np) == 0) return(NULL)
-    
-    dates    <- map(np, ~ safe_date(.x[["date_created"]]))
-    best_idx <- which.max(unlist(dates))
-    best     <- np[[best_idx]]
-    
-    tibble(
-      exp_accession       = exp$accession,
-      cell_type           = exp$biosample_term_name,
-      biosample_type      = exp$biosample_type,
-      narrowPeak_accession = best$accession,
-      narrowPeak_url      = paste0("https://www.encodeproject.org", best$href)
-    )
-  })
-  
-  write.table(results, fn, sep = "\t", quote = FALSE, row.names = FALSE)
-  cat("Rows written:", nrow(results), "\n")
-  
-} else {
-  results <- read.table(fn, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-}
-
-library(httr)
-library(readr)
-library(tidyverse)
-
-# Pick a row
-row <- results[1, ]
-
-# Download the file to a temp location
-tmp <- tempfile(fileext = ".bed.gz")
-GET(row$narrowPeak_url, write_disk(tmp, overwrite = TRUE))
-
-# Read the narrowPeak file (tab-delimited, no header)
-narrowpeak_cols <- c("chrom", "start", "end", "name", "score",
-                     "strand", "signalValue", "pValue", "qValue", "peak")
-
-peaks <- read_tsv(tmp, col_names = narrowpeak_cols, comment = "#",
-                  col_types = "ciiiciiddi")
-
-# Examine the 
-
-head(peaks)
-
-# Roadmap DHS
-library(valr)
-library(dplyr)
-library(data.table)
-
-sig <- read_tsv("/work/jb621/GEMMAmod_iPSCORE/all_results_filtered_pval05.tsv")
-
-# Make bed file for most sig SNVs
-# Equivalent to constructing a BedTool from unique chrom/start/end rows of sig
-snvs <- sig %>%
-  rename(chrom = `#chrom`) %>% 
-  mutate(
-    chrom = paste0("chr", chrom),
-    start = as.integer(start),
-    end   = as.integer(end)
-  ) %>%
-  distinct() %>%
-  bed_sort()
-
-exons <- fread("/work/jb621/GEMMAmod_iPSCORE/gencode_v38_exons_merged.bed", 
-               col.names = c("chrom", "start", "end"))
-
-# Get intergenic SNVs — equivalent to snvs.intersect(exons, v=True)
-# v=True means keep only snvs that do NOT overlap exons
-intergenic_snvs <- bed_subtract(snvs, exons)
-
-# 5kb window centered on SNVs — equivalent to .slop(l=2500, r=2500, g=hg38)
-hg38_chrom_sizes <- read_tsv("/work/jb621/GEMMAmod_iPSCORE/hg38.chrom.sizes", col_names = F)
-hg38_chrom_sizes <- hg38_chrom_sizes %>% 
-  filter(X1 %in% c("chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10",
-                   "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20",
-                   "chr21", "chr22", "chrX", "chrY") ) %>% 
-  rename(chrom = X1,
-         size = X2)
-
-intergenic_window <- intergenic_snvs %>%
-  bed_slop(genome = hg38_chrom_sizes, both = 2500)
-
-lead_vars <- intergenic_window %>% 
-  group_by(gene_id) %>%
-  slice_min(pvalue, n = 1, with_ties = FALSE)
-
-outdir <- "/work/jb621/GEMMAmod_iPSCORE/Roadmap_DHS"
-
-calc_bed_enrichment_from_path <- function(path, variants, variants_window) {
-  
-  intergenic_snvs -> variants
-  intergenic_window -> variants_window
-  path <- files[1]
-  
-  bt <- read_tsv(path, col_names = c("chrom", "start", "end",
-                                     "name", "score", "strand", "signalValue",
-                                     "pValue", "qValue", "peak"),
-                 col_types = "cii", comment = "#") %>%
-    bed_sort() %>%
-    bed_merge()
-  
-  # variants.intersect(bt)
-  res        <- bed_intersect(variants, bt, min_overlap = 0L)
-  eqtl_in_peak  <- nrow(res)
-  eqtl_out_peak <- nrow(variants) - eqtl_in_peak
-  # variants_window.intersect(bt, wo=True)
-  res_window <- bed_intersect(variants_window, bt, min_overlap = 0L)
-  not_eqtl_in_peak  <- nrow(res_window) - eqtl_in_peak
-  not_eqtl_out_peak <- nrow(variants_window) - not_eqtl_in_peak - eqtl_in_peak - eqtl_out_peak
-  
-  contingency <- matrix(
-    c(eqtl_in_peak, eqtl_out_peak, not_eqtl_in_peak, not_eqtl_out_peak),
-    nrow = 2,
-    dimnames = list(c("eqtl", "not_eqtl"), c("in_peak", "out_peak"))
-  )
-  ft <- fisher.test(contingency)
-  
-  return(list(path, ft$estimate, ft$p.value))
-}
-
-fn <- file.path(outdir, "roadmap_dnase_res.tsv")
-
-if (!file.exists(fn)) {
-  
-  local_dir <- "/work/jb621/GEMMAmod_iPSCORE/Roadmap_DHS/egg2.wustl.edu/roadmap/data/byFileType/peaks/consolidated/narrowPeak"
-  files     <- list.files(local_dir, pattern = "^E\\d{3}-DNase\\.macs2\\.narrowPeak\\.gz$", full.names = TRUE)
-  ids       <- sapply(strsplit(basename(files), "-"), `[`, 1)
-  
-  roadmap_dnase_res <- data.frame(
-    odds_ratio = rep(-1, length(ids)),
-    pvalue     = rep(-1, length(ids)),
-    row.names  = ids,
-    stringsAsFactors = FALSE
-  )
-  
-  res <- lapply(files, function(x) {
-    calc_bed_enrichment_from_path(x, intergenic_snvs, intergenic_window)
-  })
-  
-  for (r in res) {
-    idx <- strsplit(basename(r[[1]]), "-")[[1]][1]
-    roadmap_dnase_res[idx, "odds_ratio"] <- r[[2]]
-    roadmap_dnase_res[idx, "pvalue"]     <- r[[3]]
-  }
-  
-  write_tsv(tibble::rownames_to_column(roadmap_dnase_res, "id"), fn)
-  
-} else {
-  
-  roadmap_dnase_res <- read_tsv(fn, show_col_types = FALSE) %>%
-    tibble::column_to_rownames("id")
-  
-}
-
-rownames(roadmap_dnase_res) <- roadmap_ids[rownames(roadmap_dnase_res)]
 
 
