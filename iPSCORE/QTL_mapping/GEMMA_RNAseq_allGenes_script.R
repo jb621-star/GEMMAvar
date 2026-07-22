@@ -6,7 +6,7 @@ library(tidyverse)
 library(data.table)
 library(parallel)
 
-setwd("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/")
+setwd("~/QTL_mapping/")
 
 # ============================================================================
 # Core REML Likelihood Functions
@@ -947,7 +947,7 @@ for (i in seq_len(n_pairs)) {
   def_results$F_wald[i]  <- gemma_results$F_wald
   def_results$p_wald[i]  <- gemma_results$p_wald
 }
-save(def_results, file = paste0("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/GEMMA_eqtl_output_allPairs.Rda"))
+save(def_results, file = paste0("GEMMA_eqtl_output_allPairs.Rda"))
 #load(file = "/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/GEMMA_eqtl_output_liftover.Rda")
 
 # --- GEMMAmod ----
@@ -1036,7 +1036,7 @@ for (i in seq_len(n_pairs)) {
 
   }
 #}
-save(mod_results, file = paste0("/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/GEMMAmod_eqtl_output_allPairs.Rda"))
+save(mod_results, file = paste0("GEMMAmod_eqtl_output_allPairs.Rda"))
 #load(file = "/data/irb/biostatisticsbioinformatics/pro00117530/GEMMAmod_iPSCORE/QTL_mapping/GEMMAmod_eqtl_output_liftover.Rda")
 
 # chr7_28152661_C_T is rs849133
