@@ -10,7 +10,7 @@ peak_list <- readLines("caqtl_gene_inputs/peak_list.txt")
 cat("Peaks expected:", length(peak_list), "\n")
 
 # ---- Check completion status ----
-output_files <- paste0("caqtl_gemmamod_outputs/", peak_list, "NOSHRINKAGE.rds")
+output_files <- paste0("caqtl_gemmamod_outputs/", peak_list, ".rds")
 completed    <- file.exists(output_files)
 error_files  <- list.files("caqtl_gemmamod_outputs", pattern = "^ERROR_", full.names = TRUE)
 
@@ -73,6 +73,6 @@ setcolorder(results, col_order)
 cat(sprintf("Total pairs collected : %d\n", nrow(results)))
 cat(sprintf("Peaks collected       : %d\n", uniqueN(results$Element_ID)))
 
-fwrite(results, "gemmamod_caqtl_results_NOSHRINKAGE_allPairs.tsv", sep = "\t")
-save(results,   file = "gemmamod_caqtl_results_NOSHRINKAGE_allPairs.Rda")
-cat("Results written to gemmamod_caqtl_results_NOSHRINKAGE_allPairs.tsv and .Rda\n")
+fwrite(results, "gemmamod_caqtl_results_allPairs.tsv", sep = "\t")
+save(results,   file = "gemmamod_caqtl_results_allPairs.Rda")
+cat("Results written to gemmamod_caqtl_results_allPairs.tsv and .Rda\n")
