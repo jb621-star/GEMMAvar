@@ -12,7 +12,7 @@ phen_means_list <- vector("list", n_sims)
 
 for (s in 1:n_sims) {
   phen_means_list[[s]] <- read.table(
-    paste0("/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten/",
+    paste0("~/",
            "PhenotypeSimulated_singleSNP_h2005_UHetero1sc_sampledSNP_", s, ".txt")
   )$V1
 }
@@ -32,7 +32,7 @@ r2_df <- rbind(r2_df, data.frame(
   r2    = per_snp_h2_list
 ))
 
-save(r2_df, file = "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten/r2_vs_df.Rda")
+save(r2_df, file = "~/r2_vs_df.Rda")
 
 # Plot
 ggplot(r2_df, aes(x = r2, fill = h2, color = h2)) +
