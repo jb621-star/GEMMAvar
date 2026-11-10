@@ -2,7 +2,7 @@
 ### POWER SIMULATIONS for eQTL analysis
 ### COMPARING: GEMMA (default) vs GEMMA (modified with voom weights)
 ############################################################################
-.libPaths(c("/hpc/group/baughlab/jb621/R/RlibCL", .libPaths()))
+.libPaths(c("~/R/RlibCL", .libPaths()))
 library(limma)
 library(edgeR)
 library(tidyverse)
