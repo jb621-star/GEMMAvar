@@ -1025,5 +1025,78 @@ print(summary_stats)
 
 # Save results
 save(power_results, summary_stats, kinship_matrix,
-     file = "~/eqtl_gemma_voomVedgeR_power_simulation_fcX_results.RData")
+     file = "~/eqtl_gemma_voomVedgeR_wCov_power_simulation_results_allfc_033026.RData")
+
+library(dplyr)
+library(ggplot2)
+library(binom)
+
+# Pool counts across sims within each method x fc
+summary_ci <- power_results %>%
+  group_by(method, fc) %>%
+  summarise(
+    total_TP = sum(true_positives),
+    total_FN = sum(false_negatives),
+    total_FP = sum(false_positives),
+    n_power  = total_TP + total_FN,   # all truly non-null genes across sims
+    n_fdr    = total_TP + total_FP,   # all genes called significant
+    power_pooled = total_TP / n_power,
+    fdr_pooled   = if_else(n_fdr > 0, total_FP / n_fdr, NA_real_),
+    .groups = "drop"
+  )
+
+# Wilson CIs (vectorized, no rowwise needed)
+power_ci <- binom.confint(summary_ci$total_TP, summary_ci$n_power, methods = "wilson")
+fdr_ci   <- binom.confint(summary_ci$total_FP, pmax(summary_ci$n_fdr, 1L), methods = "wilson")
+
+summary_ci <- summary_ci %>%
+  mutate(
+    power_lower = power_ci$lower,
+    power_upper = power_ci$upper,
+    fdr_lower   = fdr_ci$lower,
+    fdr_upper   = fdr_ci$upper
+  )
+
+# Plot
+p1 <- ggplot(summary_ci, aes(x = fc, y = power_pooled, color = method, group = method)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = power_lower, ymax = power_upper),
+                width = 0.075) +
+  geom_hline(yintercept = 0.8, linetype = "dashed",
+             color = "gray50", alpha = 0.5) +
+  annotate("text", x = min(summary_ci$fc), y = 0.8,
+           label = "80% Power", vjust = -0.5, hjust = -0.25,
+           color = "gray50", size = 6) +
+  # geom_hline(yintercept = 0.05, linetype = "dashed",
+  #            color = "red", alpha = 0.5) +
+  # annotate("text", x = min(summary_ci$fc), y = 0.05,
+  #          label = expression(alpha," = 0.05"), vjust = -0.5, hjust = -0.25,
+  #          color = "red", size = 6) +
+  scale_x_continuous(breaks = unique(summary_ci$fc)) +
+  scale_color_discrete(labels = c("GEMMA_modified" = "voom+GEMMAvar",
+                                  "GEMMA_default" = "edgeR+GEMMA")) +
+  labs(
+    title    = "TDR Comparison: voom+GEMMAvar vs edgeR+GEMMA",
+    #title    = "FDR Comparison: voom+GEMMAvar vs edgeR+GEMMA",
+    #subtitle = "Uniform Variance",
+    #subtitle = "Fitted Mean-Variance",
+    x        = "Fold Change (FC)",
+    y        = "TDR (Correct eQTL Detection)",
+    # y        = "Empirical FDR",
+    color    = "Method"
+  ) +
+  theme_bw() + 
+  theme(
+    axis.text.x      = element_text(size = 20),
+    axis.text.y      = element_text(size = 20),
+    plot.title       = element_text(hjust = 0.5, size = 26),
+    plot.subtitle    = element_text(hjust = 0.5, size = 18),
+    legend.title     = element_text(size = 16),
+    legend.text      = element_text(size = 16),
+    axis.title.x     = element_text(size = 22),
+    axis.title.y     = element_text(size = 22)
+  )
+p1
+
 
