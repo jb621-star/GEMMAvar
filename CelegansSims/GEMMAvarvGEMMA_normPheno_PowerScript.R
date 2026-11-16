@@ -895,7 +895,7 @@ plot_power_curves <- function(power_summary) {
 #' @return ggplot object
 plot_power_ratio <- function(power_summary) {
   
-  p <- ggplot(power_summary, aes(x = h2, y = power_ratio)) +
+  r_p1 <- ggplot(power_summary, aes(x = h2, y = power_ratio)) +
     geom_line(size = 1.2, color = "steelblue") +
     geom_point(size = 3, color = "steelblue") +
     geom_ribbon(aes(ymin = power_ratio_lower_ci, ymax = power_ratio_upper_ci),
@@ -903,25 +903,54 @@ plot_power_ratio <- function(power_summary) {
     geom_hline(yintercept = 1.0, linetype = "dashed", color = "red", size = 1) +
     annotate("text", x = mean(power_summary$h2), y = 1.0,
              label = "Equal Power", vjust = -0.5, color = "red", size = 6) +
-    scale_x_continuous(breaks = unique(power_summary$h2)) +
-    labs(title = "Power Ratio: Modified / Default GEMMA",
-         subtitle = "Uniform Variance",
+    #scale_x_continuous(breaks = unique(power_summary$h2)) +
+    labs(title = "Power Ratio: GEMMAvar / GEMMA",
+         subtitle = "Unstructured Variance",
          #subtitle = "Fitted Mean-Variance",
          x = expression(Heritability~(h^2)),
-         y = "Power Ratio (Modified / Default)") +
-    ylim(c(0.9, 2.4)) + 
+         y = "Power Ratio (GEMMAvar / GEMMA)") +
+    ylim(c(0.8, 2.2)) + 
     theme_bw()   + 
     theme(
       legend.position  = "bottom",
-      axis.text.x      = element_text(size = 16),
-      axis.text.y      = element_text(size = 16),
-      plot.title       = element_text(hjust = 0.5, size = 22),
-      plot.subtitle    = element_text(hjust = 0.5, size = 14),
-      legend.title     = element_text(size = 14),
-      legend.text      = element_text(size = 14),
-      axis.title.x     = element_text(size = 18),
-      axis.title.y     = element_text(size = 18)
+      axis.text.x      = element_text(size = 20),
+      axis.text.y      = element_text(size = 20),
+      plot.title       = element_text(hjust = 0.5, size = 26),
+      plot.subtitle    = element_text(hjust = 0.5, size = 16),
+      legend.title     = element_text(size = 16),
+      legend.text      = element_text(size = 16),
+      axis.title.x     = element_text(size = 22),
+      axis.title.y     = element_text(size = 22)
     )
+  r_p1
+  r_p2 <- ggplot(power_summary, aes(x = h2, y = power_ratio)) +
+    geom_line(size = 1.2, color = "steelblue") +
+    geom_point(size = 3, color = "steelblue") +
+    geom_ribbon(aes(ymin = power_ratio_lower_ci, ymax = power_ratio_upper_ci),
+                alpha = 0.2, fill = "steelblue") +
+    geom_hline(yintercept = 1.0, linetype = "dashed", color = "red", size = 1) +
+    annotate("text", x = mean(power_summary$h2), y = 1.0,
+             label = "Equal Power", vjust = -0.5, color = "red", size = 6) +
+    #scale_x_continuous(breaks = unique(power_summary$h2)) +
+    labs(title = "Power Ratio: GEMMAvar / GEMMA",
+         #subtitle = "Uniform Variance",
+         subtitle = "Fitted Mean-Variance",
+         x = expression(Heritability~(h^2)),
+         y = "Power Ratio (GEMMAvar / GEMMA)") +
+    ylim(c(0.8, 2.2)) + 
+    theme_bw()   + 
+    theme(
+      legend.position  = "bottom",
+      axis.text.x      = element_text(size = 20),
+      axis.text.y      = element_text(size = 20),
+      plot.title       = element_text(hjust = 0.5, size = 26),
+      plot.subtitle    = element_text(hjust = 0.5, size = 16),
+      legend.title     = element_text(size = 16),
+      legend.text      = element_text(size = 16),
+      axis.title.x     = element_text(size = 22),
+      axis.title.y     = element_text(size = 22)
+    )
+  r_p2
   
   return(p)
 }
@@ -1322,7 +1351,8 @@ plot(x = plotting_data$value, y = plotting_data$se2,
 cat("\n=== Running Power Tests ===\n\n")
 
 # Check if results already exist
-results_file <- file.path(output_dir, "GEMMA_DefvModTesting_UHetero1sc_power_results.Rda")
+results_file <- "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten/power_analysis/GEMMA_DefvModTesting_FITMEAN_NOSHRINKAGE_power_results.Rda"
+results_file <- "/hpc/group/baughlab/jb621/GEMMA_2_testing/sampledSNPs/preWhiten/power_analysis/UHetero13_results_101026.Rda"
 
 if (file.exists(results_file)) {
   cat("Loading existing power results...\n")
@@ -1456,7 +1486,7 @@ summary_ci <- power_results_long %>%
     fdr_upper   = fdr_ci$upper
   )
 
-p1 <- ggplot(summary_ci, aes(x = h2, y = power_pooled, color = method, group = method)) +
+c_p2 <- ggplot(summary_ci, aes(x = h2, y = power_pooled, color = method, group = method)) +
   geom_line(size = 1) +
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = power_lower, ymax = power_upper), width = 0.002) +
@@ -1465,28 +1495,28 @@ p1 <- ggplot(summary_ci, aes(x = h2, y = power_pooled, color = method, group = m
   annotate("text", x = min(summary_ci$h2), y = 0.8, 
            label = "80% Power", vjust = -0.5, hjust = -0.25, color = "gray50", size = 7) +
   scale_color_discrete(labels = c("GEMMA_default"  = "GEMMA",
-                                  "GEMMA_modified" = "GEMMAmod")) +
+                                  "GEMMA_modified" = "GEMMAvar")) +
   labs(
-    title    = "Power Comparison: GEMMA vs GEMMAmod",
-    #subtitle = "Uniform Variance",
+    title    = "Power Comparison: GEMMA vs GEMMAvar",
+    #subtitle = "Unstructured Variance",
     subtitle = "Fitted Mean-Variance",
     x        = "Heritability (h²)",          # <-- updated from Fold Change
     y        = "Power (Correct Causal SNP Detection)",
     color    = "Method"
   ) +
-  theme_bw() +
+  ylim(0,1) + 
+  theme_bw()   + 
   theme(
-    legend.position  = "bottom",
-    axis.text.x      = element_text(size = 14),
-    axis.text.y      = element_text(size = 14),
-    plot.title       = element_text(hjust = 0.5, size = 22),
-    plot.subtitle    = element_text(hjust = 0.5, size = 14),
-    legend.title     = element_text(size = 14),
-    legend.text      = element_text(size = 14),
-    axis.title.x     = element_text(size = 18),
-    axis.title.y     = element_text(size = 18)
-  )
-p1
+    #legend.position  = "bottom",
+    axis.text.x      = element_text(size = 20),
+    axis.text.y      = element_text(size = 20),
+    plot.title       = element_text(hjust = 0.5, size = 26),
+    plot.subtitle    = element_text(hjust = 0.5, size = 16),
+    legend.title     = element_text(size = 16),
+    legend.text      = element_text(size = 16),
+    axis.title.x     = element_text(size = 22),
+    axis.title.y     = element_text(size = 22))
+c_p2
 
 plots_file <- file.path(output_dir, "GEMMA_DefvModTesting_UHetero1sc_power_plots.Rda")
 
@@ -1940,4 +1970,3 @@ prepare_gemma_data <- function(pheno, geno, covars = NULL, kinship) {
   
   list(Y = Y, X = X, W = W, K = K)
 }
-
